@@ -26,6 +26,7 @@ df <- rbindlist(out)
 
 scores <- sapply(df[,4:13], gsub, pattern = "[^0-9. ]", replacement = "")
 scores <- as.data.frame(scores)
+scores[is.na(scores)] <- 0                    
 # fix some formatting issues 
 
 # save as csv file 
