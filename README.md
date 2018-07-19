@@ -3,9 +3,9 @@
 
 Analysis of the state of the competition for the last few years, looking at: 
 
-  clustering of teams 
+  * clustering of teams 
   
-  dificulty creep over time 
+  * dificulty creep over time 
 
 Anova between two axle manufacturers to determine if there is a statisical difference between their hardnesses
 
