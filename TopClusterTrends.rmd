@@ -6,7 +6,7 @@ output: html_document
 
 Have you ever seen a video comparing Olympic sports from the Seventies to modern day? 
 They difference between the two is striking, what is required to even make the cut nowadays completely eclipses what would have won their respective events before. 
-This phenomenon didn’t just occur overnight; instead there was creep, an incremental increase in difficulty year to year perpetuated by a number of different factors. 
+This phenomenon didn?t just occur overnight; instead there was creep, an incremental increase in difficulty year to year perpetuated by a number of different factors. 
 These factors are not of concern in this paper, rather what the rate of creep experienced in the last few years of FSAE. 
 The goal of this analysis is to determine the rate of time decreases in event times that a FSAE team needs to acquire just to remain competitive. 
 
@@ -17,7 +17,7 @@ Taking more data points would have taken more time and any less might not have b
 Taking just the top performing teams of every event is not a good idea, a team might build a car specifically to win acceleration but not to win any other event.
 A team like this is not playing the same game as the other teams to which their creep factor may be unrelated to the competition as a whole. 
 Taking the top overall performing teams from every year is another method (and would be a good extension to this analysis). 
-However, you lose out on not necessarily following the same teams’ year to year, thus not seeing how the same vehicle gets refined each year to achieve the creep.  
+However, you lose out on not necessarily following the same teams? year to year, thus not seeing how the same vehicle gets refined each year to achieve the creep.  
 
 ```{r}
 library(tidyverse)
@@ -32,11 +32,6 @@ tten8 <- subset(X, X$Year == 2018)
 ### Placements
 ```{r, echo = FALSE}
 ## Placements
-tnd_P <- lm(tten8$Accel ~ tten8$Place)
-tnd_P
-# intercept 4.33
-# trend 0.00804
-
 ptp <- ggplot(X) +
     geom_point(aes(x = as.factor(Year), y = Place, col = Team)) +
     geom_boxplot(aes(x = as.factor(Year), y = Place), alpha = 0.25) +
@@ -52,8 +47,8 @@ similar data.
 ## Acceleration Event 
 tnd_A <- lm(tten$Accel ~ tten$Year)
 tnd_A
-# intercept 11.895
-# trends -.0037
+# intercept -28.483
+# trends 0.0163
 ```
 
 ```{r}
@@ -65,16 +60,15 @@ pta
 ```
 
 
-The trend shows an annual decrease in Acceleration Times of apporximatley 0.004 seconds. 
-This is relatively insignificant and general improvements year to year should take care 
-of this small time discrepancy. 
+The trend shows a slight annual increase in Acceleration times of apporximatley 0.015 seconds per year. 
+This is relatively insignificant and is most likely due to the proliferation of aerodynamics and downforce generation. 
 
 ### SkidPad
 ```{r, echo=FALSE}
 tnd_S <- lm(tten$Skid_pad ~ tten$Year)
 tnd_S
-# intercept 113.834
-# trend -.0539
+# intercept 103.78
+# trend -0.0489
 ```
 
 ```{r}
@@ -92,8 +86,8 @@ a quarter of a second on this event over five years.
 ## Autocross Event
 tnd_C <- lm(tten$Autocross ~ tten$Year)
 tnd_C
-# intercept 3404.363
-# trend -1.664
+# intercept 3741.59
+# trend -1.83
 ```
 
 ```{r}
@@ -104,7 +98,7 @@ ptc <- ggplot(X) +
 ptc
 ```
 
-This analysis shows that there is over a 1.5 second decrease in autocross laptimes year to year. 
+This analysis shows that there is over a 1.75 second decrease in autocross laptimes per year. 
 It is unclear if 2017 was just a fast autocross track or if the trend does exist or some combination 
 of the two. The data could also show a four year cycle where 2013 and 2017 were fast with the other years 
 slower tracks, but that is unclear from this data snapshot. 
@@ -113,8 +107,9 @@ slower tracks, but that is unclear from this data snapshot.
 ```{r, echo=FALSE}
 ## Endurance Event 
 tnd_E <- lm(tten$Endurance ~ tten$Year)
-# intercept -10610.405
-# trend 5.983
+tnd_E
+# intercept -8072.16
+# trend 4.722
 ```
 
 ```{r}
@@ -124,8 +119,9 @@ pte <- ggplot(X) +
     ylab("Seconds") + ggtitle("Endurance Event Trends")
 pte
 ```
-Even though all previous events saw a decrease year to year in times the Endurance times appear to be increasing. 
-This is most likely due to course design. This window of data shows a three year cycle where 2014 and 
+Even though the autocross event saw a decrease year to year in times the Endurance times appear to be increasing. 
+This is most likely due to course design where the courses are getting longer every year despite the continuous improvements
+by the teams. This window of data could show a three year cycle where 2014 and 
 2017 are fast tracks, 2015 and 2018 are slow tracks, and 2013 and 2016 are relatively slow. Keep that in mind 
 when comparing Endurance times in the future. 
 
