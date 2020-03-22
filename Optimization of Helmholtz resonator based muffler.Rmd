@@ -1,0 +1,188 @@
+---
+title: "Design Optimization of Helmholtz chamber based Muffler"
+output:
+  html_document:
+    df_print: paged
+---
+#Introduction
+There are many factors that go into muffler design from material selection of the outer shell and packing materials, to the dimensions of the muffler. There are two main attenuator types that can be determined from geometry, expansion chambers and Helmholtz resonators. Expansion chambers are best to apply blanked attenuation over a large band of frequencies. Helmholtz resonators are used to apply a large amount of attenuation at a specific frequency. Used together, these two techniques can be combined in the muffler to reduce the  This notebook will look into a muffler design with 2 Helmholtz resonators in series along the tailpipe, targeting 2 independent frequencies. 
+
+```{r, results='hide'}
+library(control)
+#used to generate transfer functions and analyze system response of finalized design
+library(GenSA)
+#genetic algorithm library used to optimize the error function
+library(ggplot2)
+```
+
+## Constants and variables 
+```{r}
+# lengths = m
+# Temperature = C 
+
+## Constants 
+# gas constants 
+gamma = 1.4 # Ratio of specific heats
+R = 287.05      # J/K kg
+rho = 5.59  # N/m^3
+
+## Variables 
+Dout = 0.1524    # outer diameter of chamber
+h = 0.00127    # Thickness of shell
+Din = Dout - (2*h)
+input <- vax <- vector(mode = "numeric", length = 3)
+
+# chamber dimensions 
+Tch = 260  # Temp inside helmholtz chamber
+Lch = .9 # Length of chamber
+
+
+# connection to chamber
+a = 0.01 # radius of inner diameter of connecting pipe
+b = 0.08 # length of connecting pipe to chamber
+
+
+## Calculations 
+Vch = pi/4 * Din^2 * Lch  # volume of chamber
+Sch = pi*a^2              # cross sectional area of pipe
+cnd = sqrt(gamma*R*(Tch + 273)) # speed of sound m/s
+```
+
+##Error function for the Optimizer
+
+The error function (evaluation) developed works to both minimize the error between the desired frequency and to minimize the length (and thus the total mass) of the resulting muffler. The first function should reduce the design space to a line of options, each attenuating the target frequency but with different sizes of the resulting resonator and with differeing magnitudes of attenuation, decreasing the magnitude reduces the lead up time to get to that frequency, resulting in tighter assembly tolerances in the final product. This function can and should be adjusted to reflect your pertanent design goals: performance, weight, monetary cost, etc. 
+
+```{r}
+# Functions
+evaluation <- function(input = c()) {
+   returnVal = NA
+    vax[1] <- pi / 4 * (Din ^ 2) * input[1] # volume of chamber
+    vax[2] <- pi * (input[3] ^ 2)           # cross sectional area of pipe
+    vax[3] <- (input[1]+input[2])^2         # squared length of pipe (proportional to mass due to the )
+    #cat(vax[1])
+    #cat(vax[2])
+    #cat(vax[3])
+    #cat("\n")
+    if (length(input) == 3){
+        # Error function for frequency target
+       returnVal <- abs(((cnd/(2*pi)) * sqrt(vax[2]/(vax[1]*(input[2]+(0.8*input[3])))))-(target+vax[3]))
+        # adding error to 
+       returnVal <- returnVal + vax[3]                  
+       return(returnVal)
+    }else{
+        stop("Expecting a chromosome of length 3!")
+    }
+}
+
+```
+
+```{r}
+w <- cnd/(2*pi) * sqrt(Sch/(Vch*(b + 0.8*a)))
+w
+```
+The methods designed to increase the manufacurability of the designed mufflers suggest to use a standard size of cylindrical pipe stock that can be cut to the appropriate lengths and welded with the aid of face plates and guide markings. Because of this, the outer diameter of pipe and the wall thicknesss will remain constant in the optimization. This means that the only way to increase the resonator’s volume is to increase the length of the chamber. 
+
+```{r}
+txt = c("Resonator length", "con.pipe length", "con.pipe radius")
+lb = c(0.1, 0.001, 0.001)
+ub = c(3, 0.5, 0.5)
+curr350 = c(Lch, b, a)
+target = 350
+
+#ga35 <- rbga(lb, ub, popSize = 800, iters = 1500, monitorFunc = monitor, evalFunc = evaluation, verbose = F, mutationChance = 0.02)
+#cat(summary(ga35))
+#plot(ga35)
+#grid()
+
+ga35 <- GenSA(fn=evaluation, lower=lb, upper=ub, control = list(threshold.stop = 1))
+ga35$par
+```
+
+## Evaluating Optimization
+```{r}
+Lch = ga35$par[1]
+b = ga35$par[2]
+a = ga35$par[3]
+Vch = pi/4 * Din^2 * Lch  
+Sch = pi*a^2              
+cnd = sqrt(gamma*R*(Tch + 273)) 
+w <- cnd/(2*pi) * sqrt(Sch/(Vch*(b + 0.8*a)))
+w
+```
+This analysis uses the mass-spring approximation of the Helmholtz resonator to define the transfer function of the system response produced by the resonator where the Mass (M)is the mass of air in the neck of the resonator and the Spring (K) is the volume of compressible fluid in the chamber. 
+```{r}
+# thinking in terms of spring mass damper system
+M = rho * Sch * (b + 0.8*a)
+K = rho * cnd^2 * (Sch^2/Vch)
+
+# Factors
+numHR <- c(1)
+denHR <- c(M,0,K)
+HR350 <- tf(numHR, denHR)
+HR350
+rsps <- bode(HR350, w = seq(100,1500*2*pi, by=1 ))
+# convert to hz 
+rsps$hz <- rsps$w/(2*pi) 
+# rescale output 
+rsps$mag <- rsps$mag - rsps$mag[1]
+plot(x=rsps$hz, y=rsps$mag, log="x", type='l')
+grid()
+title("Magnitude response of 1st Resonator")
+abline(v=target, col='red')
+plot(x=rsps$hz, y=rsps$phase, log="x", type='l')
+grid()
+title("Phase response of 1st Resonator")
+```
+
+# Now for the 2nd Helmholtz resonator
+Helmholtz resonators not only change the magnitude of the response but also produce a phase shift. This changes the base frequencies that need to be attenuated. 
+It is recommended to validate a single resonator muffler, analyze the resulting system output, and design the second resonator to target that new system rather than a secondary peak that may have occurred from the initial investigation. For the purposes of this workbook it is assumed that that work has already been done and the resulting peak frequency is 700hz. 
+```{r}
+target = 700
+ga70 <- GenSA(fn=evaluation, lower=lb, upper=ub, control = list(threshold.stop = 1))
+ga70$par
+```
+```{r}
+Lch = ga70$par[1]
+b = ga70$par[2]
+a = ga70$par[3]
+Vch = pi/4 * Din^2 * Lch  
+Sch = pi*a^2              
+cnd = sqrt(gamma*R*(Tch + 273)) 
+w <- cnd/(2*pi) * sqrt(Sch/(Vch*(b + 0.8*a)))
+w
+```
+```{r}
+# thinking in terms of spring mass damper system
+M = rho * Sch * (b + 0.8*a)
+K = rho * cnd^2 * (Sch^2/Vch)
+
+# Factors
+numHR <- c(1)
+denHR <- c(M,0,K)
+HR700 <- tf(numHR, denHR)
+HR700
+rsps <- bode(HR700, w = seq(100,1500*2*pi, by=1 ))
+rsps$hz <- rsps$w/(2*pi)
+rsps$mag <- rsps$mag - rsps$mag[1]
+plot(x=rsps$hz, y=rsps$mag, log="x", type='l')
+grid()
+title("Magnitude response of 2nd Resonator")
+abline(v=target, col='red')
+```
+
+# Combined Response 
+due to the output of the first resonator feeding the input to the second resonator the two transfer functions modeling the attenuation of each resonator have been added together. 
+```{r, echo=FALSE}
+muffler <- series(HR350,HR700)
+rsps <- bode(muffler, w = seq(100,1500*2*pi, by=1 ))
+rsps$hz <- rsps$w/(2*pi)
+rsps$mag <- rsps$mag - rsps$mag[1]
+plot(x=rsps$hz, y=rsps$mag, log="x", type='l')
+grid()
+title("Magnitude response of 2 Resonator Muffler")
+
+plot(x=rsps$hz, y=rsps$phase, log="x", type='l')
+grid()
+title("Phase response of 2 Resonator Muffler")
+```
